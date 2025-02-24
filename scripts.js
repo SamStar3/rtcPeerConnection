@@ -1,4 +1,5 @@
 const { resolve } = require("path");
+const socket = io.connect('https://localhost:8181/');
 
 
 const localVideoEl = document.querySelector('#local-video');
@@ -19,24 +20,24 @@ let peerConfiguration = {
     ]
 }
 
-const call = async e=> {
-    const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        // audio:true,
-    });
-    localVideoEl.srcObject = stream;
+const call = async e=>{
+    await fetchUserMedia();
 
-    localStream = stream;
-
+    //peerConnection is all set with our STUN servers sent over
     await createPeerConnection();
 
+    //create offer time!
     try{
-        console.log("Creating offer...");   
+        console.log("Creating offer...")
         const offer = await peerConnection.createOffer();
         console.log(offer);
+        peerConnection.setLocalDescription(offer);
+        didIOffer = true;
+        socket.emit('newOffer',offer); //send offer to signalingServer
     }catch(err){
-        console.log(err);
+        console.log(err)
     }
+
 }
 
 const createPeerConnection =  () => {
@@ -45,7 +46,7 @@ const createPeerConnection =  () => {
         peerConnection = await new RTCPeerConnection(peerConfiguration);
 
         localStream.getTracks().forEach(track=> {
-            peerConnection.addTrack(track)
+            peerConnection.addTrack(track,localStream);
         })
 
         peerConnection.addEventListener('icecandidate', e=>{
